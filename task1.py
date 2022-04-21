@@ -29,28 +29,34 @@ def build_graph():
 
 
 def process(model_str, q=False, alpha=None, logging=True):
-    if logging: log.warning(f'Starting processing for {model_str} regression...')
+    if logging:
+        log.warning(f'Starting processing for {model_str} regression...')
     model = models.get(model_str)
 
-    if alpha: model.set_params(alpha=alpha)
+    if alpha:
+        model.set_params(alpha=alpha)
 
     data = pd.read_csv('real_estate.csv')
     data.drop(labels='No', axis=1, inplace=True)
 
-    if q: data = data[data[BASE_COLUMN] <= data[BASE_COLUMN].quantile(q=0.95)]
+    if q:
+        data = data[data[BASE_COLUMN] <= data[BASE_COLUMN].quantile(q=0.95)]
     x_data = data.drop(BASE_COLUMN, axis=1)
     y_data = data[BASE_COLUMN]
 
-    if logging: log.warning(f'Splitting data for {model_str} regression...')
+    if logging:
+        log.warning(f'Splitting data for {model_str} regression...')
     x_train, x_test, y_train, y_test = sms.train_test_split(x_data, y_data, test_size=0.2, random_state=101)
 
-    if logging: log.warning(f'Training for {model_str} regression...')
+    if logging:
+        log.warning(f'Training for {model_str} regression...')
     model.fit(x_train, y_train)
 
     if PRINT_DATAFRAME:
         print(pd.DataFrame(model.coef_, x_data.columns, columns=['coeficient']))
 
-    if logging: log.warning(f'Predicting for {model_str} regression...')
+    if logging:
+        log.warning(f'Predicting for {model_str} regression...')
     y_pred = model.predict(x_test)
 
     if PRINT_DATAFRAME:
