@@ -10,12 +10,12 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import make_scorer
 from sklearn.metrics import classification_report
 
-log.Formatter("%(asctime)s:%(levelname)s:%(message)s")
+
 
 from sklearn.model_selection import GridSearchCV
 
 from sklearn.feature_extraction.text import (
-    CountVectorizer
+    CountVectorizer,
 )
 
 import warnings
@@ -76,9 +76,8 @@ def process():
     log.warning('Vectorizing strings of comments...')
     train_texts = train['comment_text']
     test_texts = test['comment_text']
-    vectorizer = CountVectorizer(strip_accents='unicode', stop_words={'english'}, analyzer='word')
-    vectorizer.fit(train_texts)
-    vectorizer.fit(test_texts)
+    vectorizer = CountVectorizer(ngram_range=(1, 1),  strip_accents='unicode', stop_words={'english'})
+    vectorizer.fit(data['comment_text'])
 
     X_train = vectorizer.transform(train_texts)
     y_train = train['toxic']
@@ -86,8 +85,9 @@ def process():
     X_test = vectorizer.transform(test_texts)
     y_test = test['toxic']
 
+
     log.warning('Training first logic regression...')
-    logic = LogisticRegression(max_iter=20001101)
+    logic = LogisticRegression(random_state=0, )
     logic.fit(X_train, y_train)
 
     log.warning('Predicting first logic regression...')
@@ -99,7 +99,7 @@ def process():
 
     log.warning('Training with GridSearchCV...')
     f1_scorer = make_scorer(f1_score, average='macro')
-    logic_cv = GridSearchCV(LogisticRegression(max_iter=20001101), dict(C=np.arange(0.01, 1, 0.1)),
+    logic_cv = GridSearchCV(LogisticRegression(random_state=0, penalty='l2'), dict(C=np.arange(0.01, 1, 0.1)),
                             scoring=f1_scorer)
 
     logic_cv.fit(X_train, y_train)
@@ -110,18 +110,6 @@ def process():
     status['f1_score_gscv'] = f1_score(predicted_cv, y_test, average='macro')
     status['c_gscv'] = logic_cv.best_params_["C"]
 
-    log.warning('C traversal started...')
-
-    def test_cv(C, X_test, X_train, y_test, y_train):
-        logic = LogisticRegression(C=C, max_iter=20001101)
-        logic.fit(X_train, y_train)
-        predicted = logic.predict(X_test)
-        return f1_score(y_test, predicted, average='macro')
-
-    status['c_traversal'] = []
-
-    for c_p in [0.01, 0.11, 0.21, 0.31, 0.41, 0.51, 0.61, 0.71, 0.81, 0.91, 1.0]:
-       status['c_traversal'].append((c_p, test_cv(c_p, X_test, X_train, y_test, y_train)))
     log.warning('Job finished! Collecting results')
 
 
@@ -137,9 +125,6 @@ def reporting():
 
     print(f'GSCV F1 score: {status.get("f1_score_gscv")}\n'
          f'GSCV best C is: {status.get("c_gscv")}\n')
-
-    for item in status.get('c_traversal'):
-       print(f'C = {item[0]} --> F1 = {item[1]}')
 
 
 def start():
