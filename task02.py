@@ -16,7 +16,7 @@ def prepare(data):
     teach_data, test_data = skl_ms.train_test_split(data, test_size=0.2, random_state=5)
 
     vectorizer = skl_text.CountVectorizer(lowercase=True, ngram_range=(1, 1), strip_accents='unicode',
-                                          stop_words={'english'})
+                                          stop_words={'english'}, analyzer='word')
     vectorizer.fit(data['comment_text'])
 
     X = vectorizer.transform(teach_data["comment_text"])
