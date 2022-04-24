@@ -35,7 +35,7 @@ def start():
     print("Prepare data")
     X, y, X_test, y_test = prepare(data)
 
-    print("Start regression")
+    print("Start logistic regression")
     regression = skl_lm.LogisticRegression(random_state=0, max_iter=1000)
     regression.fit(X, y)
 
