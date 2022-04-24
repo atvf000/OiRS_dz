@@ -32,22 +32,26 @@ def prepare(data):
 
     X = teach_data[["Length1", "Height", "Width"] + types].values
     y = teach_data['Weight']
-    return X, y
+
+    X_test = test_data[["Length1", "Height", "Width"] + types].values
+    y_test = test_data['Weight']
+
+    return X, y, X_test, y_test
 
 
-def linear_regression(X, y):
+def linear_regression(X, y, X_test, y_test):
     fitted_regression = skl_lm.LinearRegression().fit(X, y)
-    return math.sqrt(skl_m.mean_squared_error(y, fitted_regression.predict(X)))
+    return math.sqrt(skl_m.mean_squared_error(y_test, fitted_regression.predict(X_test)))
 
 
-def ridge(X, y, a=1.):
+def ridge(X, y, X_test, y_test, a=1.):
     fitted_regression = skl_lm.Ridge(alpha=a).fit(X, y)
-    return math.sqrt(skl_m.mean_squared_error(y, fitted_regression.predict(X)))
+    return math.sqrt(skl_m.mean_squared_error(y_test, fitted_regression.predict(X_test)))
 
 
-def lasso(X, y):
+def lasso(X, y, X_test, y_test):
     fitted_regression = skl_lm.Lasso().fit(X, y)
-    return math.sqrt(skl_m.mean_squared_error(y, fitted_regression.predict(X)))
+    return math.sqrt(skl_m.mean_squared_error(y_test, fitted_regression.predict(X_test)))
 
 
 def print_plot(x, y):
@@ -57,30 +61,30 @@ def print_plot(x, y):
 
 def start():
     data = pd.read_csv("Fish.csv")
-    data = data[data['Weight'] <= data["Weight"].quantile(q=0.95)]
     # print_pairplot(data)
     data = species_to_int(data)
-
-    X, y = prepare(data)
-    print("LR   \tRMSE: \t", linear_regression(X, y))
+    X, y, X_test, y_test = prepare(data)
 
     selected_data = data[data['Weight'] <= data["Weight"].quantile(q=0.95)]
-    X, y = prepare(selected_data)
-    print("LR s \tRMSE: \t", linear_regression(X, y))
+    X_s, y_s, X_test_s, y_test_s = prepare(selected_data)
 
-    X, y = prepare(data)
-    print("Ridge \tRMSE: \t", ridge(X, y))
+    print("LR   \tRMSE: \t", linear_regression(X, y, X_test, y_test))
+    print("LR s \tRMSE: \t", linear_regression(X_s, y_s, X_test_s, y_test_s))
 
-    X, y = prepare(data)
-    print("Lasso \tRMSE: \t", lasso(X, y))
+    print("Ridge \tRMSE: \t", ridge(X, y, X_test, y_test))
+    print("Rid s \tRMSE: \t", ridge(X_s, y_s, X_test_s, y_test_s))
+
+    print("Lasso \tRMSE: \t", lasso(X, y, X_test, y_test))
+    print("Las s \tRMSE: \t", lasso(X_s, y_s, X_test_s, y_test_s))
 
     alpha = 0.
     results = []
     alphas = []
     while alpha <= 1.:
-        results.append(ridge(X, y, alpha))
+        results.append(ridge(X, y, X_test, y_test, alpha))
         alphas.append(alpha)
         alpha += 0.05
+    print("Opt Rid \tRMSE: \t", min(results))
     print_plot(alphas, results)
 
 

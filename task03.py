@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import sklearn.model_selection as skl_ms
 import sklearn.metrics as skl_m
+from sklearn.linear_model import SGDRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -82,23 +83,6 @@ def start():
     data = species_to_int(data)
     X, y, X_test, y_test = prepare(data)
 
-    print("Start linear regression")
-    pipeline = make_pipeline(
-        StandardScaler(),
-        SGDLinearRegression()
-    )
-    pipeline.fit(X, y)
-
-    print("Start predict")
-    print('Result: ',
-          math.sqrt(
-              skl_m.mean_squared_error(
-                  pipeline.predict(X_test),
-                  y_test
-              )
-          )
-    )
-
     print("-" * 20, "\nStart grid search")
     ms_scorer = skl_m.make_scorer(skl_m.mean_squared_error, greater_is_better=False)
     pipeline_scaler_regression = make_pipeline(StandardScaler(), SGDLinearRegression())
@@ -148,6 +132,19 @@ def start():
 
     plt.plot(epsilons, results)
     plt.show()
+
+    pipline_reg = make_pipeline(StandardScaler(), SGDRegressor(alpha=0))
+    pipline_reg.fit(X, y)
+
+    print("Start predict")
+    print('Result: ',
+          math.sqrt(
+              skl_m.mean_squared_error(
+                  pipline_reg.predict(X_test),
+                  y_test
+              )
+          )
+    )
 
 
 if __name__ == '__main__':
