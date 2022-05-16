@@ -116,11 +116,13 @@ def predicting(X, y, model):
     loss_f = F.mse_loss
     return math.sqrt(loss_f(model.forward(X), y).item())
 
+
 def print_graph(loss, loss_train):
     plt.plot(loss, 'ob', label="train")
     plt.plot(loss_train, 'or', label="test")
     plt.legend(loc="upper left")
     plt.show()
+
 
 def start():
     print("Read data from csv")
@@ -158,7 +160,7 @@ def start():
     print_graph(loss, loss_train)
 
     # ----------------------------------------------------------------------
-    print('\n', '-'*20)
+    print('\n', '-' * 20)
     print("Task 1.4")
     loss_train.clear()
     loss.clear()
@@ -180,7 +182,7 @@ def start():
     print_graph(loss, loss_train)
 
     # ----------------------------------------------------------------------
-    print('\n', '-'*20)
+    print('\n', '-' * 20)
     print("Task 1.5")
     loss_train.clear()
     loss.clear()
@@ -202,7 +204,7 @@ def start():
     print_graph(loss, loss_train)
 
     # ----------------------------------------------------------------------
-    print('\n', '-'*20)
+    print('\n', '-' * 20)
     print("Task 1.6")
     loss_train.clear()
     loss.clear()
