@@ -15,11 +15,13 @@ types = ['Bream',
          'Pike',
          'Smelt']
 
+
 def species_to_int(data):
     newdata = data.copy()
     for i in types:
         newdata[i] = data['Species'].apply(lambda x: 1 if x == i else 0)
     return newdata
+
 
 def prepare(data):
     teach_data, test_data = sklearn.model_selection.train_test_split(data, test_size=0.2, random_state=5)
@@ -39,12 +41,32 @@ def prepare(data):
     return X, y, X_test, y_test
 
 
-def training(X, y):
+def create_model(layers=1, func=2, optim_type=2):
+    func_activ = {
+        0: nn.Sigmoid(),
+        1: nn.Tanh(),
+        2: nn.ReLU(),
+        3: nn.ELU()
+    }
     model = nn.Sequential()
-    model.add_module('l1', nn.Linear(in_features=10, out_features=1))
-    model.add_module('a1', nn.LeakyReLU())
 
-    optim = torch.optim.RMSprop(model.parameters(), lr=0.01, alpha=0.5, momentum=0)
+    for i in range(1, layers):
+        model.add_module(f'l{i}', nn.Linear(in_features=10, out_features=10))
+        model.add_module(f'a{i}', func_activ.get(func))
+
+    model.add_module(f'l{layers}', nn.Linear(in_features=10, out_features=1))
+
+    optims = {
+        0: torch.optim.SGD(model.parameters(), lr=0.01, momentum=0),
+        1: torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.5),
+        2: torch.optim.RMSprop(model.parameters(), lr=0.01, alpha=0.5, momentum=0),
+        3: torch.optim.Adam(model.parameters(), lr=0.01)
+    }
+
+    return model, optims.get(optim_type)
+
+
+def training(X, y, model, optim):
     loss_f = F.mse_loss
     loss_history = []
 
@@ -75,8 +97,21 @@ def start():
     data = data[data['Weight'] <= data["Weight"].quantile(q=0.95)]
     X, y, X_test, y_test = prepare(data)
 
-    print("Start nn\n")
-    training(X, y)
+    loss = []
+    b_amount_layers = 0
+
+    print("Task 1.3")
+    loss.clear()
+    for i in range(1, 5):
+        print(f'amount of layers: {i}')
+        model, optim = create_model(layers=i)
+        training(X, y, model, optim)
+        # TODO add loss append
+
+    print("Task 1.4")
+    loss.clear()
+    for i in range(4):
+
 
 
 if __name__ == '__main__':
