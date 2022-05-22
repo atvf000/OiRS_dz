@@ -8,6 +8,7 @@ from torch.nn import functional as F
 import sklearn.model_selection
 import math
 
+
 types = ['Bream',
          'Roach',
          'Whitefish',
@@ -140,6 +141,7 @@ def start():
     print("Task 1.3")
     loss_train.clear()
     loss.clear()
+    kill_random()
 
     for i in range(1, 5):
         print(f'amount of layers: {i}')
@@ -164,6 +166,7 @@ def start():
     print("Task 1.4")
     loss_train.clear()
     loss.clear()
+    kill_random()
 
     for i in range(4):
         print(f'type of activation function: {func_act_names.get(i)}')
@@ -186,6 +189,7 @@ def start():
     print("Task 1.5")
     loss_train.clear()
     loss.clear()
+    kill_random()
 
     for i in range(4):
         print(f'type of optimizer: {optim_names.get(i)}')
@@ -208,6 +212,7 @@ def start():
     print("Task 1.6")
     loss_train.clear()
     loss.clear()
+    kill_random()
 
     for i in [None, 0.2, 0.5]:
         for j in [False, True]:
@@ -225,6 +230,23 @@ def start():
 
     print(loss_train)
     print_graph(loss, loss_train)
+
+    # ----------------------------------------------------------------------
+    print('\n', '-' * 20)
+    print("Task 1.7")
+    loss_train.clear()
+    loss.clear()
+    kill_random()
+
+    model, optim = create_model(layers=4, func=2, optim_type=2, has_batch=False, dropout_prob=None)
+    loss.append(
+        training(X, y, model, optim)
+    )
+
+    loss_train.append(
+        predicting(X_test, y_test, model)
+    )
+    print(loss_train[-1])
 
 
 if __name__ == '__main__':
