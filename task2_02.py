@@ -28,8 +28,7 @@ def accuracy(y_pred, y):
 
 
 def f1(y_pred, y):
-    f = lambda x: x.detach().numpy()
-    return f1_score(f(y), f(y_pred), average='macro')
+    return f1_score(y.detach().numpy(), y_pred.round().detach().numpy(), average='macro')
 
 
 def kill_random():
@@ -54,15 +53,19 @@ def prepare(data):
     vectorizer.fit(data['comment_text'])
 
     X = vectorizer.transform(teach_data["comment_text"]).toarray()
-    y = teach_data['toxic'].to_numpy()
+    y_tr = teach_data['toxic'].to_numpy()
+    y = torch.tensor(y_tr).float()
+    y = torch.Tensor(np.array([np.array([y_s]) for y_s in y]))
 
     X_test = vectorizer.transform(test_data["comment_text"]).toarray()
-    y_test = test_data['toxic'].to_numpy()
+    y_te = test_data['toxic'].to_numpy()
+    y_test = torch.tensor(y_te).float()
+    y_test = torch.Tensor(np.array([np.array([y_s]) for y_s in y_test]))
 
     return X, y, X_test, y_test
 
 
-def create_model(layers=1, func=2, optim_type=2, has_batch=False, dropout_prob=None):
+def create_model(amount_of_batches, layers=1, func=2, optim_type=2, has_batch=False, dropout_prob=None):
     func_activ = {
         0: nn.Sigmoid(),
         1: nn.Tanh(),
@@ -72,16 +75,26 @@ def create_model(layers=1, func=2, optim_type=2, has_batch=False, dropout_prob=N
     model = nn.Sequential()
 
     if has_batch:
-        model.add_module('b1', nn.BatchNorm1d(10, True))
+        model.add_module('b1', nn.BatchNorm1d(amount_of_batches, True))
 
-    for i in range(1, layers):
-        model.add_module(f'l{i}', nn.Linear(in_features=9379, out_features=9379))
-        model.add_module(f'a{i}', func_activ.get(func))
+    if layers > 2:
+        model.add_module(f'l{0}', nn.Linear(in_features=amount_of_batches, out_features=100))
+        model.add_module(f'a{0}', func_activ.get(func))
+        for i in range(2, layers):
+            model.add_module(f'l{i}', nn.Linear(in_features=100, out_features=100))
+            model.add_module(f'a{i}', func_activ.get(func))
 
-    if dropout_prob is not None:
-        model.add_module('d1', nn.Dropout(p=dropout_prob))
+        if dropout_prob is not None:
+            model.add_module('d1', nn.Dropout(p=dropout_prob))
 
-    model.add_module(f'l{layers}', nn.Linear(in_features=9379, out_features=1))
+        model.add_module(f'l{layers}', nn.Linear(in_features=100, out_features=1))
+        model.add_module(f'a{layers}', nn.Sigmoid())
+    else:
+        model.add_module(f'l{0}', nn.Linear(in_features=amount_of_batches, out_features=1))
+        model.add_module(f'a{layers}', nn.Sigmoid())
+
+        if dropout_prob is not None:
+            model.add_module('d1', nn.Dropout(p=dropout_prob))
 
     optims = {
         0: torch.optim.SGD(model.parameters(), lr=0.01, momentum=0),
@@ -101,11 +114,9 @@ def training(X, y, model, optim):
         model.train()
 
         y_pred = model.forward(torch.tensor(X).float())
-        y_res = torch.tensor(y).float()
-        y_res = torch.Tensor(np.array([np.array([y]) for y in y_res]))
 
-        loss = loss(y_pred, y_res)
-        loss.backward()
+        loss_f = loss(y_pred, y)
+        loss_f.backward()
 
         optim.step()
 
@@ -125,6 +136,7 @@ def print_graph(loss, loss_test, acc, acc_test):
     plt.plot(loss, 'ob', label="train")
     plt.plot(loss_test, 'or', label="test")
     plt.legend(loc="upper left")
+    plt.show()
 
     plt.plot(acc, 'ob', label="train")
     plt.plot(acc_test, 'or', label="test")
@@ -140,6 +152,8 @@ def start():
     print("Prepare data")
     X, y, X_test, y_test = prepare(data)
 
+    amount_of_batches = len(X[0])
+
     loss = []
     loss_test = []
     acc = []
@@ -147,7 +161,7 @@ def start():
     f1_test = []
 
     # ----------------------------------------------------------------------
-    print("Task 1.3")
+    print("Task 2.3")
     loss_test.clear()
     loss.clear()
     acc_test.clear()
@@ -158,7 +172,7 @@ def start():
 
     for i in range(1, 5):
         print(f'amount of layers: {i}')
-        model, optim = create_model(layers=i)
+        model, optim = create_model(amount_of_batches, layers=i)
         loss_t, acc_t, f1_t = training(X, y, model, optim)
         loss_p, acc_p, f1_p = predicting(X_test, y_test, model)
 
@@ -176,7 +190,7 @@ def start():
 
     # ----------------------------------------------------------------------
     print('\n', '-' * 20)
-    print("Task 1.4")
+    print("Task 2.4")
     loss_test.clear()
     loss.clear()
     acc_test.clear()
@@ -187,7 +201,7 @@ def start():
 
     for i in range(4):
         print(f'type of activation function: {func_act_names.get(i)}')
-        model, optim = create_model(layers=4, func=i)
+        model, optim = create_model(amount_of_batches, layers=4, func=i)
         loss_t, acc_t, f1_t = training(X, y, model, optim)
         loss_p, acc_p, f1_p = predicting(X_test, y_test, model)
 
@@ -205,7 +219,7 @@ def start():
 
     # ----------------------------------------------------------------------
     print('\n', '-' * 20)
-    print("Task 1.5")
+    print("Task 2.5")
     loss_test.clear()
     loss.clear()
     acc_test.clear()
@@ -216,7 +230,7 @@ def start():
 
     for i in range(4):
         print(f'type of optimizer: {optim_names.get(i)}')
-        model, optim = create_model(layers=4, func=2, optim_type=i)
+        model, optim = create_model(amount_of_batches, layers=4, func=2, optim_type=i)
         loss_t, acc_t, f1_t = training(X, y, model, optim)
         loss_p, acc_p, f1_p = predicting(X_test, y_test, model)
 
@@ -234,7 +248,7 @@ def start():
 
     # ----------------------------------------------------------------------
     print('\n', '-' * 20)
-    print("Task 1.6")
+    print("Task 2.6")
     loss_test.clear()
     loss.clear()
     acc_test.clear()
@@ -246,7 +260,7 @@ def start():
     for i in [None, 0.2, 0.5]:
         for j in [False, True]:
             print(f'has batchNorm: {j}, probability of dropout: {i}')
-            model, optim = create_model(layers=4, func=2, optim_type=2, has_batch=j, dropout_prob=i)
+            model, optim = create_model(amount_of_batches, layers=4, func=2, optim_type=2, has_batch=j, dropout_prob=i)
             loss_t, acc_t, f1_t = training(X, y, model, optim)
             loss_p, acc_p, f1_p = predicting(X_test, y_test, model)
 
@@ -264,7 +278,7 @@ def start():
 
     # ----------------------------------------------------------------------
     print('\n', '-' * 20)
-    print("Task 1.7")
+    print("Task 2.7")
     loss_test.clear()
     loss.clear()
     acc_test.clear()
@@ -273,7 +287,7 @@ def start():
 
     kill_random()
 
-    model, optim = create_model(layers=4, func=2, optim_type=2, has_batch=False, dropout_prob=None)
+    model, optim = create_model(amount_of_batches, layers=4, func=2, optim_type=2, has_batch=False, dropout_prob=None)
     loss_t, acc_t, f1_t = training(X, y, model, optim)
     loss_p, acc_p, f1_p = predicting(X_test, y_test, model)
 
