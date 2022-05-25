@@ -7,6 +7,7 @@ from torch import nn
 import sklearn.model_selection
 from sklearn.feature_extraction import text
 from sklearn.metrics import f1_score
+import math
 
 func_act_names = {
     0: "Sigmoid",
@@ -77,12 +78,11 @@ def create_model(amount_of_batches, layers=1, func=2, optim_type=2, has_batch=Fa
     if has_batch:
         model.add_module('b1', nn.BatchNorm1d(amount_of_batches, True))
 
-
-
     for i in range(1, layers):
-        model.add_module(f'l{i}', nn.Linear(in_features=amount_of_batches, out_features=(amount_of_batches >> 1)))
+        model.add_module(f'l{i}',
+                         nn.Linear(in_features=amount_of_batches, out_features=(math.ceil(amount_of_batches / 10))))
         model.add_module(f'a{i}', func_activ.get(func))
-        amount_of_batches = amount_of_batches >> 1
+        amount_of_batches = math.ceil(amount_of_batches / 10)
 
     model.add_module(f'l{layers}', nn.Linear(in_features=amount_of_batches, out_features=1))
     model.add_module(f'a{layers}', nn.Sigmoid())
