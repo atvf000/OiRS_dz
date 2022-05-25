@@ -77,24 +77,18 @@ def create_model(amount_of_batches, layers=1, func=2, optim_type=2, has_batch=Fa
     if has_batch:
         model.add_module('b1', nn.BatchNorm1d(amount_of_batches, True))
 
-    if layers > 2:
-        model.add_module(f'l{0}', nn.Linear(in_features=amount_of_batches, out_features=100))
-        model.add_module(f'a{0}', func_activ.get(func))
-        for i in range(2, layers):
-            model.add_module(f'l{i}', nn.Linear(in_features=100, out_features=100))
-            model.add_module(f'a{i}', func_activ.get(func))
 
-        if dropout_prob is not None:
-            model.add_module('d1', nn.Dropout(p=dropout_prob))
 
-        model.add_module(f'l{layers}', nn.Linear(in_features=100, out_features=1))
-        model.add_module(f'a{layers}', nn.Sigmoid())
-    else:
-        model.add_module(f'l{0}', nn.Linear(in_features=amount_of_batches, out_features=1))
-        model.add_module(f'a{layers}', nn.Sigmoid())
+    for i in range(1, layers):
+        model.add_module(f'l{i}', nn.Linear(in_features=amount_of_batches, out_features=(amount_of_batches >> 1)))
+        model.add_module(f'a{i}', func_activ.get(func))
+        amount_of_batches = amount_of_batches >> 1
 
-        if dropout_prob is not None:
-            model.add_module('d1', nn.Dropout(p=dropout_prob))
+    model.add_module(f'l{layers}', nn.Linear(in_features=amount_of_batches, out_features=1))
+    model.add_module(f'a{layers}', nn.Sigmoid())
+
+    if dropout_prob is not None:
+        model.add_module('d1', nn.Dropout(p=dropout_prob))
 
     optims = {
         0: torch.optim.SGD(model.parameters(), lr=0.01, momentum=0),
