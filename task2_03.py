@@ -1,102 +1,104 @@
 import re
-from typing import Dict
-
 import pandas as pd
-import numpy as np
-import sklearn.cluster as sc
-import sklearn.metrics as sm
-
+from sklearn.metrics import f1_score, accuracy_score, fbeta_score
+from sklearn.cluster import KMeans
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-SCORES = dict(
-    fbeta=lambda y_true, y_pred: sm.fbeta_score(y_true, y_pred, beta=0.5),
-    accuracy=lambda y_true, y_pred: sm.accuracy_score(y_true, y_pred),
-    f1=lambda y_true, y_pred: sm.f1_score(y_true, y_pred),
-    quality=lambda y_true, y_pred: sm.fbeta_score(y_true, y_pred,
-                                                  beta=0.5) * 10000,
-)
 
-class Resolver:
-    def __init__(self, raw_data: pd.DataFrame):
-        self.raw_data = raw_data
-        self.model = sc.KMeans(
-            n_clusters=2,
-            random_state=0
-        )
-        self.pre_data: pd.DataFrame = None
-        self.data: pd.DataFrame = None
-        self.result: np.ndarray = None
-        self.result_metric: Dict[str, float] = dict()
+def accuracy(y_pred, y):
+    return accuracy_score(y, y_pred)
 
-    def extract_features(self):
-        data = self.raw_data.copy()
-        data[f'f_perc'] = data.request.apply(lambda x: len(re.findall('%', x)))
-        data[f'f_sad'] = data.request.apply(lambda x: len(re.findall('\(', x)))
-        data[f'f_permax'] = data.request.apply(lambda x: max([s.count('%') for s in x.split('\n')]))
-        data[f'f_apos'] = data.request.apply(lambda x: len(re.findall('\'', x)))
-        data[f'f_linux'] = data.request.apply(lambda x: len(re.findall('Linux', x)))
-        data[f'f_sleep'] = data.request.apply(lambda x: len(re.findall('sleep', x)))
-        data[f'f_select'] = data.request.apply(lambda x: len(re.findall('select', x)))
-        data[f'f_abobut'] = data.request.apply(lambda x: len(re.findall('about', x)))
-        data[f'f_exclam'] = data.request.apply(lambda x: len(re.findall('!', x)))
 
-        del data['request']
-        self.pre_data = data
+def f1(y_pred, y):
+    return f1_score(y, y_pred)
 
-    def _prepare_data(self):
-        data = self.pre_data.copy()
-        columns: pd.Index = data.columns
-        preparer = make_pipeline(
-            StandardScaler(),
-        )
-        prepared_data = preparer.fit_transform(data)
-        df = pd.DataFrame(
-            prepared_data,
-            columns=columns,
-        )
-        self.data = df
 
-    def print_results(self, y_true):
-        for key in SCORES.keys():
-            score = SCORES[key](
-                y_true,
-                self.result.reshape(-1, 1)
-            )
-            print(f'{key:>16}: \x1b[34m{score:<9.4f}\x1b[0m')
+def f_beta(y_pred, y):
+    return fbeta_score(y, y_pred, beta=0.5)
 
-    def fit(self):
-        self._prepare_data()
-        self.model.fit(self.data)
 
-    def resolve(self):
-        self._prepare_data()
-        self.result = self.model.predict(self.data)
+def prepare(data):
+    data['%'] = data['request'].apply(lambda x: len(re.findall(r'%', x)))
+    data['('] = data['request'].apply(lambda x: len(re.findall(r'\(', x)))
+    data[')'] = data['request'].apply(lambda x: len(re.findall(r'\)', x)))
+    data['!'] = data['request'].apply(lambda x: len(re.findall(r'!', x)))
+    data['\''] = data['request'].apply(lambda x: len(re.findall(r'\'', x)))
 
-    def save_results(self):
-        df = pd.DataFrame(
-            data=self.result,
-            columns=['y_true'],
-        )
-        df.to_csv('biborka/data/result.csv', index=False)
+    data['about'] = data['request'].apply(lambda x: len(re.findall(r'about', x)))
+    data['burp'] = data['request'].apply(lambda x: len(re.findall(r'burp', x)))
+    data['sleep'] = data['request'].apply(lambda x: len(re.findall(r'sleep', x)))
+    data['select'] = data['request'].apply(lambda x: len(re.findall(r'select', x)))
+    data['union'] = data['request'].apply(lambda x: len(re.findall(r'union', x)))
+
+    return data
+
+
+def prepare_fit(data):
+    del data['request']
+
+    columns: pd.Index = data.columns
+    preparer = make_pipeline(
+        StandardScaler(),
+    )
+    prepared_data = preparer.fit_transform(data)
+    df = pd.DataFrame(
+        prepared_data,
+        columns=columns,
+    )
+
+    return df
+
+
+def create_model():
+    return KMeans(
+        n_clusters=2,
+        random_state=0
+    )
+
+
+def results(y, y_pred):
+    print(" f1:\t\t", f1(y_pred, y),
+          "\n accuracy:\t", accuracy(y_pred, y),
+          "\n quality:\t", f_beta(y_pred, y) * 10000)
+
+
+def save_results(result):
+    df = pd.DataFrame(
+        data=result,
+        columns=['y_true'],
+    )
+    df.to_csv('result.csv', index=False)
+
+
+def start():
+    print("Read train data from csv")
+    data = pd.read_csv('train2.csv')
+    y_true = data['y_true']
+    data.pop('y_true')
+
+    print("Prepare train data")
+    data = prepare(data)
+    data = prepare_fit(data)
+
+    model = create_model()
+    model.fit(data)
+    result = model.predict(data)
+    results(y_true, result)
+
+    # -----------------------------------
+
+    print("Read test data from csv")
+    data_test = pd.read_csv('test.csv')
+
+    print("Prepare test data")
+    data_test = prepare(data_test)
+    data_test = prepare_fit(data_test)
+    result_test = model.predict(data_test)
+
+    print("Save results")
+    save_results(result_test)
 
 
 if __name__ == '__main__':
-    raw_data = pd.read_csv('biborka/data/train.csv')
-    data = raw_data.copy()
-    data.pop('y_true')
-
-    resolver = Resolver(data)
-    resolver.extract_features()
-    resolver.fit()
-    resolver.resolve()
-    resolver.print_results(raw_data['y_true'])
-
-    raw_data = pd.read_csv('biborka/data/test.csv')
-
-    resolver.raw_data = raw_data
-    resolver.extract_features()
-
-    resolver.resolve()
-    resolver.save_results()
-
+    start()
